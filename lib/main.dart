@@ -88,24 +88,36 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    Size size = MediaQuery.of(context).size;
+    final appBar = AppBar(
+      title: Text(widget.title),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.add),
+          onPressed: () => _startAddNewTransaction(context),
+        )
+      ],
+    );
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: () => _startAddNewTransaction(context),
-          )
-        ],
-      ),
+      appBar: appBar,
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
         onPressed: () => _startAddNewTransaction(context),
       ),
       body: ListView(
         children: [
-          Chart(recentTransactions: _recentTransactions),
-          TransactionList(transactions: _userTransactions,deleteHandler: _deleteTransaction,)
+          Container(
+            height: (size.height * 0.4) - appBar.preferredSize.height,
+            child: Chart(recentTransactions: _recentTransactions),
+          ),
+          Container(
+            height: (size.height * 0.6) - appBar.preferredSize.height,
+            child: TransactionList(
+              transactions: _userTransactions,
+              deleteHandler: _deleteTransaction,
+            ),
+          )
         ],
       ),
     );
