@@ -1,4 +1,7 @@
+import 'package:flutter/cupertino.dart';
+import 'package:universal_platform/universal_platform.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:spending_app/widgets/chart.dart';
 import 'package:spending_app/widgets/new_transaction.dart';
@@ -6,6 +9,12 @@ import 'package:spending_app/widgets/transaction_list.dart';
 import 'models/transaction.dart';
 
 void main() {
+  //強迫設置方向
+  // WidgetsFlutterBinding.ensureInitialized();
+  // SystemChrome.setPreferredOrientations([
+  //   DeviceOrientation.portraitUp,
+  //   DeviceOrientation.portraitDown,
+  // ]);
   runApp(MyApp());
 }
 
@@ -50,8 +59,10 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  //開支列表
   final List<Transaction> _userTransactions = [];
 
+  //取得當前7天內開支
   List<Transaction> get _recentTransactions {
     return _userTransactions
         .where(
@@ -59,6 +70,10 @@ class _MyHomePageState extends State<MyHomePage> {
         .toList();
   }
 
+  //switch元件使用，用於是否顯示圖表
+  bool _showChart = false;
+
+  //新增交易
   void _addNewTransaction(String title, double amount, DateTime chosenDate) {
     final newTx = Transaction(
       id: DateFormat().format(DateTime.now()),
@@ -72,6 +87,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  //彈出新增交易Dialog
   void _startAddNewTransaction(BuildContext context) {
     showModalBottomSheet(
         context: context,
@@ -80,6 +96,7 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
+  //刪除交易
   void _deleteTransaction(String id) {
     setState(() {
       _userTransactions.removeWhere((tx) => tx.id == id);
@@ -88,38 +105,99 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
+    //取得螢幕尺寸
+    final mediaQuery = MediaQuery.of(context);
+
+    //判斷是否為橫向模式
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+
+    //AppBar元件
     final appBar = AppBar(
       title: Text(widget.title),
       actions: [
         IconButton(
           icon: Icon(Icons.add),
           onPressed: () => _startAddNewTransaction(context),
-        )
+        ),
       ],
     );
-
-    return Scaffold(
-      appBar: appBar,
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () => _startAddNewTransaction(context),
-      ),
-      body: ListView(
+    //ios風格 AppBar
+    final navigationBar = CupertinoNavigationBar(
+      middle: Text(widget.title),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            height: (size.height * 0.4) - appBar.preferredSize.height,
-            child: Chart(recentTransactions: _recentTransactions),
+          GestureDetector(
+            child: Icon(CupertinoIcons.add),
+            onTap: () => _startAddNewTransaction(context),
           ),
-          Container(
-            height: (size.height * 0.6) - appBar.preferredSize.height,
-            child: TransactionList(
-              transactions: _userTransactions,
-              deleteHandler: _deleteTransaction,
-            ),
-          )
         ],
       ),
     );
+
+    //交易列表元件
+    final txListWidget = Container(
+      height: (mediaQuery.size.height - appBar.preferredSize.height) * 0.7,
+      child: TransactionList(
+        transactions: _userTransactions,
+        deleteHandler: _deleteTransaction,
+      ),
+    );
+
+    final pageBody = SafeArea(
+      child: ListView(
+        children: [
+          if (isLandscape)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'Show hart',
+                  style: Theme.of(context).textTheme.headline6,
+                ),
+                Switch.adaptive(
+                    activeColor: Theme.of(context).accentColor,
+                    value: _showChart,
+                    onChanged: (val) {
+                      setState(() {
+                        _showChart = val;
+                      });
+                    })
+              ],
+            ),
+          if (isLandscape)
+            _showChart
+                ? Container(
+                    height:
+                        (mediaQuery.size.height - appBar.preferredSize.height) *
+                            0.7,
+                    child: Chart(recentTransactions: _recentTransactions),
+                  )
+                : txListWidget,
+          if (!isLandscape)
+            Container(
+              height:
+                  (mediaQuery.size.height - appBar.preferredSize.height) * 0.3,
+              child: Chart(recentTransactions: _recentTransactions),
+            ),
+          if (!isLandscape) txListWidget,
+        ],
+      ),
+    );
+    ;
+
+    return UniversalPlatform.isIOS
+        ? CupertinoPageScaffold(
+            navigationBar: navigationBar,
+            child: pageBody,
+          )
+        : Scaffold(
+            appBar: appBar,
+            floatingActionButton: FloatingActionButton(
+              child: Icon(Icons.add),
+              onPressed: () => _startAddNewTransaction(context),
+            ),
+            body: pageBody,
+          );
   }
 }
